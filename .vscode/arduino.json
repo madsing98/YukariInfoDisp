@@ -1,0 +1,6 @@
+{
+    "board": "esp32:esp32:lolin32",
+    "configuration": "FlashFreq=80,PartitionScheme=no_ota,CPUFreq=240,UploadSpeed=921600",
+    "sketch": "YukariInfoDisp.ino",
+    "port": "/dev/tty.SLAB_USBtoUART"
+}
