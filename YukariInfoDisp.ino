@@ -1,30 +1,20 @@
 /*====================================================================================
-
-  This sketch demonstrates loading images which have been stored as files in the
-  built-in FLASH memory on a NodeMCU 1.0 (ESP8266 based, ESP-12E Module) rendering the
-  images onto a 160 x 128 pixel TFT screen.
+  This sketch loads jpeg images which have been stored as files in the
+  built-in FLASH memory on an ESP32 rendering the images onto a 160 x 80 pixel TFT screen.
 
   The images are stored in the SPI FLASH Filing System (SPIFFS), which effectively
-  functions like a tiny "hard drive". This filing system is built into the ESP8266
-  Core that can be loaded from the IDE "Boards manager" menu option. This is at
-  version 2.3.0 at the time of sketch creation.
+  functions like a tiny "hard drive". This filing system is built into the ESP32
+  Core that can be loaded from the IDE "Boards manager" menu option.
 
   The size of the SPIFFS partition can be set in the IDE as 1Mbyte or 3Mbytes. Either
-  will work with this sketch. Typically most sketches easily fit within 1 Mbyte so a
-  3 Mbyte SPIFS partition can be used, in which case it can contain 100's of Jpeg
-  full screem images.
+  will work with this sketch.
 
   The Jpeg library can be found here:
   https://github.com/Bodmer/JPEGDecoder
- 
-  Images in the Jpeg format can be created using Paint or IrfanView or other picture
-  editting software.
 
   Place the images inside the sketch folder, in a folder called "Data".  Then upload
-  all the files in the folder using the Arduino IDE "ESP8266 Sketch Data Upload" option
-  in the "Tools" menu:
-  http://www.esp8266.com/viewtopic.php?f=32&t=10081
-  https://github.com/esp8266/arduino-esp8266fs-plugin/releases
+  all the files in the folder using the Arduino IDE "ESP32 Sketch Data Upload" option
+  in the "Tools" menu
   
   This takes some time, but the SPIFFS content is not altered when a new sketch is
   uploaded, so there is no need to upload the same files again!
@@ -34,11 +24,9 @@
   another name. It is necessary to manually make a copy and place it in the sketch
   folder.
 
-  This sketch includes example images in the Data folder.
-
-  Saving images, uploading and rendering on the TFT screen couldn't be much easier!
 
   Created by Bodmer 24th Jan 2017 - Tested in Arduino IDE 1.8.0 esp8266 Core 2.3.0
+  Modified by madsing 14 May 2020
   ==================================================================================*/
 
 //====================================================================================
@@ -66,31 +54,44 @@ TFT_eSPI tft = TFT_eSPI();
 //====================================================================================
 void setup()
 {
-  Serial.begin(115200); // Used for messages and the C array generator
+  uint16_t i;
+  char jpegFile[20];
+  uint32_t startTime;
+
+  Serial.begin(115200); // Used for messages
 
   delay(10);
-  Serial.println("NodeMCU decoder test!");
+  Serial.println("Application starting");
 
   tft.begin();
-  tft.setRotation(0);  // 0 & 2 Portrait. 1 & 3 landscape
+  tft.setRotation(0); // 0 & 2 Portrait. 1 & 3 landscape
   tft.fillScreen(TFT_BLACK);
 
-  if (!SPIFFS.begin()) {
+  if (!SPIFFS.begin())
+  {
     Serial.println("SPIFFS initialisation failed!");
-    while (1) yield(); // Stay here twiddling thumbs waiting
+    while (1)
+      yield(); // Stay here twiddling thumbs waiting
   }
   Serial.println("\r\nInitialisation done.");
+  Serial.print("SPIFFS Total Bytes: "); Serial.println(SPIFFS.totalBytes());
+  Serial.print("SPIFFS Used Bytes: ");  Serial.println(SPIFFS.usedBytes());
 
   // Note the / before the SPIFFS file name must be present, this means the file is in
   // the root directory of the SPIFFS, e.g. "/Tiger.jpg" for a file called "Tiger.jpg"
 
-  drawJpeg("/train.jpg", 0, 0);
+  drawJpeg("/back.jpeg", 0, 0);
+  while (1)
+    for (i = 1; i < 607; i++)
+    {
+      sprintf(jpegFile, "/video%03d.jpeg", i);
+      startTime = millis();
+      drawJpeg(jpegFile, 0, 0);
+      // Serial.println(millis() - startTime);
+      while (millis() - startTime < 100);
+    }
 }
 
-//====================================================================================
-//                                    Loop
-//====================================================================================
 void loop()
 {
 }
-//====================================================================================
