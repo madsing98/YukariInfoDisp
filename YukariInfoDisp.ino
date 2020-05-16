@@ -16,7 +16,7 @@
   RES         GPIO4     Reset
   DC          GPIO2     Data/Command
   CS          SS/5      Chip Select
-  BLK         GPIO0     Blank (TFT backlight control)
+  BLK         GPIO15    Blank (TFT backlight control)
 
   Support for the ESP32 board is the official Arduino core for the ESP32
   https://github.com/espressif/arduino-esp32
@@ -83,7 +83,7 @@
 TFT_eSPI tft = TFT_eSPI();
 
 // the number of the LED pin
-const int blkPin = 0;  // GPIO0
+const int blkPin = 15;  // GPIO15
 
 // setting PWM properties
 const int freq = 5000;
