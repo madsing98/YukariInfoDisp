@@ -10,16 +10,22 @@
 //   !!!! SPIFFS.open() always returns a File, even if the file is not found. This
 //   !!!! function cannot be used to test if a file exists.
 //====================================================================================
-bool drawJpeg(const char *filename, int xpos, int ypos)
+bool drawJpeg(const char *filename, int xpos, int ypos, uint32_t framePeriod)
 {
+  uint32_t startTime;
+  const uint32_t renderTime = 10;
+  if (framePeriod < renderTime)
+    framePeriod = renderTime;
+  startTime = millis();
+
   if (!SPIFFS.exists(filename))
   {
     Serial.print(filename);
     Serial.println(": File not found");
     return false;
   }
-  // Open the named file (the Jpeg decoder library will close it after rendering image)
-  File jpegFile = SPIFFS.open(filename, "r"); // File handle reference for SPIFFS
+  // Open the named file (the Jpeg decoder library will close it after rendering the image)
+  File jpegFile = SPIFFS.open(filename, "r");
 
   // Use one of the three following methods to initialise the decoder:
   boolean decoded = JpegDec.decodeFsFile(jpegFile); // Pass a SPIFFS file handle to the decoder,
@@ -32,9 +38,12 @@ bool drawJpeg(const char *filename, int xpos, int ypos)
     Serial.println(": Jpeg file format not supported");
     return false;
   }
-  // Print information about the image to the serial port
-  //jpegInfo();
 
+  // Wait for the right time to display the resulting image
+  // This may be zero if the decoding time was too long
+  // Here we assume that the rendering time is 10ms
+  while ((millis() - startTime) < (framePeriod - renderTime));
+  
   // Render the image onto the screen at given coordinates
   jpegRender(xpos, ypos);
   return true;

@@ -11,12 +11,12 @@
   --------------------
   GND         GND
   VCC         3V3
-  SCL         SCL       SPI Clock
+  SCL         SCK       SPI Clock
   SDA         MOSI      SPI Data (to slave)
-  RES         4         Reset
-  DC          2         Data/Command
+  RES         GPIO4     Reset
+  DC          GPIO2     Data/Command
   CS          SS/5      Chip Select
-  BLK
+  BLK         GPIO0     Blank (TFT backlight control)
 
   Support for the ESP32 board is the official Arduino core for the ESP32
   https://github.com/espressif/arduino-esp32
@@ -53,6 +53,11 @@
   - an 80x80 pixel background image (back.jpeg) once at the beginning
   - a sequence of up to one thousand 40x80 images (videoNNN.jpeg) stored in the
     built-in flash memory.
+  
+  The videoNNN.jpeg files are built as follows:
+  - Scale and crop the source video to 40x80 (portrait) with Handbrake
+  - Extract the .jpeg files with ffmpeg:
+    ./ffmpeg -i video.mp4 -s 40x80 -r 10 video%03d.jpeg
 
   ==================================================================================*/
 
@@ -76,6 +81,14 @@
 // "src" folder of the library
 #include <TFT_eSPI.h>
 TFT_eSPI tft = TFT_eSPI();
+
+// the number of the LED pin
+const int blkPin = 0;  // GPIO0
+
+// setting PWM properties
+const int freq = 5000;
+const int ledChannel = 0;
+const int resolution = 8;
 
 void setup()
 {
@@ -103,17 +116,25 @@ void setup()
       yield(); // Stay here twiddling thumbs waiting
   }
   #ifdef DEBUG
-  Serial.println("\r\nInitialisation done.");
+  Serial.println("TFT and SPIFFS initialisation done");
   Serial.print("SPIFFS Total Bytes: "); Serial.println(SPIFFS.totalBytes());
   Serial.print("SPIFFS Used Bytes: ");  Serial.println(SPIFFS.usedBytes());
   #endif
 
+  // Configure BLK LED PWM
+  ledcSetup(ledChannel, freq, resolution);
+  
+  // Attach the channel to the GPIO to be controlled and set the duty cycle
+  // to control the TFT back light
+  ledcAttachPin(blkPin, ledChannel);
+  ledcWrite(ledChannel, 40);
+ 
   // Note the / before the SPIFFS file name must be present, this means the file is in
   // the root directory of the SPIFFS
   // The first file is named video001.jpeg. The last file may be up to video999.jpeg
   // The for loop will break and restart at video001.jpeg as soon as a file is not
   // found or cannot be opened
-  drawJpeg("/back.jpeg", 0, 0);
+  drawJpeg("/back.jpeg", 0, 0, 0);
   while (1)
   {
     #ifdef DEBUG
@@ -124,14 +145,13 @@ void setup()
 
     for (i = 1; i < 1000; i++)
     {
-      sprintf(jpegFilename, "/video%03d.jpeg", i);
-    
       #ifdef DEBUG
       startTime = millis();
       #endif
-    
-      if (!drawJpeg(jpegFilename, 0, 0))
-        break;  // exit for loop
+
+      sprintf(jpegFilename, "/video%03d.jpeg", i);
+      if (!drawJpeg(jpegFilename, 0, 0, FRAME_PERIOD))
+        break;  // exit 'for' loop
     
       #ifdef DEBUG
       frameTime = millis() - startTime;
@@ -139,8 +159,6 @@ void setup()
       statMax = maximum(statMax, frameTime);
       statSum += frameTime;
       #endif
-    
-      while (millis() - startTime < FRAME_PERIOD);
     }
   #ifdef DEBUG
   Serial.println("Decoding Statistics ------");
