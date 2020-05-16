@@ -1,21 +1,25 @@
 /*====================================================================================
   This sketch contains support functions to render the Jpeg images.
-
-  Created by Bodmer 15th Jan 2017
   ==================================================================================*/
 
 // Return the minimum of two values a and b
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
 
 //====================================================================================
-//   Opens the image file and prime the Jpeg decoder
+//   Opens the image file and calls the Jpeg decoder
+//   !!!! SPIFFS.open() always returns a File, even if the file is not found. This
+//   !!!! function cannot be used to test if a file exists.
 //====================================================================================
 bool drawJpeg(const char *filename, int xpos, int ypos)
 {
+  if (!SPIFFS.exists(filename))
+  {
+    Serial.print(filename);
+    Serial.println(": File not found");
+    return false;
+  }
   // Open the named file (the Jpeg decoder library will close it after rendering image)
   File jpegFile = SPIFFS.open(filename, "r"); // File handle reference for SPIFFS
-  if (!jpegFile)
-    return false;
 
   // Use one of the three following methods to initialise the decoder:
   boolean decoded = JpegDec.decodeFsFile(jpegFile); // Pass a SPIFFS file handle to the decoder,
@@ -24,13 +28,14 @@ bool drawJpeg(const char *filename, int xpos, int ypos)
   // Note: the filename can be a String or character array type
   if (!decoded)
   {
-    Serial.println("Jpeg file format not supported!");
+    Serial.print(filename);
+    Serial.println(": Jpeg file format not supported");
     return false;
   }
-  // print information about the image to the serial port
+  // Print information about the image to the serial port
   //jpegInfo();
 
-  // render the image onto the screen at given coordinates
+  // Render the image onto the screen at given coordinates
   jpegRender(xpos, ypos);
   return true;
 }
@@ -40,7 +45,7 @@ bool drawJpeg(const char *filename, int xpos, int ypos)
 //====================================================================================
 void jpegRender(int xpos, int ypos)
 {
-  // retrieve infomration about the image
+  // Retrieve information about the image
   uint16_t *pImg;
   uint16_t mcu_w = JpegDec.MCUWidth;
   uint16_t mcu_h = JpegDec.MCUHeight;
@@ -65,7 +70,6 @@ void jpegRender(int xpos, int ypos)
   // read each MCU block until there are no more
   while (JpegDec.readSwappedBytes())
   { // Swap byte order so the SPI buffer can be used
-
     // save a pointer to the image block
     pImg = JpegDec.pImage;
 
@@ -104,10 +108,7 @@ void jpegRender(int xpos, int ypos)
 
     // draw image MCU block only if it will fit on the screen
     if ((mcu_x + win_w) <= tft.width() && (mcu_y + win_h) <= tft.height())
-    {
       tft.pushRect(mcu_x, mcu_y, win_w, win_h, pImg);
-    }
-
     else if ((mcu_y + win_h) >= tft.height())
       JpegDec.abort();
   }

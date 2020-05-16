@@ -1,16 +1,45 @@
 /*====================================================================================
-  This sketch loads jpeg images which have been stored as files in the
-  built-in FLASH memory on an ESP32 rendering the images onto a 160 x 80 pixel TFT screen.
+  Sketch used for the tourist information display
 
-  The images are stored in the SPI FLASH Filing System (SPIFFS), which effectively
-  functions like a tiny "hard drive". This filing system is built into the ESP32
-  Core that can be loaded from the IDE "Boards manager" menu option.
+  Hardware components used:
+  - ESP32 (Lolin32) with 4BM Flash memory
+  - 0.96" 80x180 RGB IPS display with ST7735 driver (only the top 80x80 pixels are 
+    used and visible)
+  
+  Connections:
+  DISPLAY     ESP32
+  --------------------
+  GND         GND
+  VCC         3V3
+  SCL         SCL       SPI Clock
+  SDA         MOSI      SPI Data (to slave)
+  RES         4         Reset
+  DC          2         Data/Command
+  CS          SS/5      Chip Select
+  BLK
 
-  The size of the SPIFFS partition can be set in the IDE as 1Mbyte or 3Mbytes. Either
-  will work with this sketch.
+  Support for the ESP32 board is the official Arduino core for the ESP32
+  https://github.com/espressif/arduino-esp32
+  Parameters:
+  - Selected board: ESP32 Dev Module (esp32)
+  - PSRAM: Disabled
+  - Partition Scheme: No OTA (1MB APP/3MB SPIFFS)
+  - CPU Frequency: 240MHz (WiFi/BT)
+  - Flash Mode: QIO
+  - Flash Frequency: 80MHz
+  - Flash Size: 4MB (32Mb)
+  - Upload Speed: 921600
+  - Core Debug Level: None
 
-  The Jpeg library can be found here:
-  https://github.com/Bodmer/JPEGDecoder
+  (Note: Lolin32 also works as the selected board, but it does not provide as many
+  options for the partition scheme)
+
+  Uploading files to the ESP32 flash:
+  Install ESP32 Filesystem Uploader in Arduino IDE
+  https://randomnerdtutorials.com/install-esp32-filesystem-uploader-arduino-ide/
+  https://github.com/me-no-dev/arduino-esp32fs-plugin/releases/
+
+  The size of the ESP32 SPIFFS partition can be set in the IDE as 1Mbyte or 3Mbytes.
 
   Place the images inside the sketch folder, in a folder called "Data".  Then upload
   all the files in the folder using the Arduino IDE "ESP32 Sketch Data Upload" option
@@ -18,50 +47,48 @@
   
   This takes some time, but the SPIFFS content is not altered when a new sketch is
   uploaded, so there is no need to upload the same files again!
-  Note: If open, you must close the "Serial Monitor" window to upload data to SPIFFS!
+  Note: The "Serial Monitor" window must be closed to upload data to SPIFFS!
 
-  The IDE will not copy the "data" folder with the sketch if you save the sketch under
-  another name. It is necessary to manually make a copy and place it in the sketch
-  folder.
+  This sketch loads
+  - an 80x80 pixel background image (back.jpeg) once at the beginning
+  - a sequence of up to one thousand 40x80 images (videoNNN.jpeg) stored in the
+    built-in flash memory.
 
-
-  Created by Bodmer 24th Jan 2017 - Tested in Arduino IDE 1.8.0 esp8266 Core 2.3.0
-  Modified by madsing 14 May 2020
   ==================================================================================*/
 
-//====================================================================================
-//                                  Libraries
-//====================================================================================
-// Call up the SPIFFS FLASH filing system this is part of the ESP Core
+// Return the minimum and maximum of two values a and b
+#define minimum(a, b) (((a) < (b)) ? (a) : (b))
+#define maximum(a, b) (((a) > (b)) ? (a) : (b))
+
+// #define DEBUG
+#define FRAME_PERIOD 100 // Time between two frames in ms
+
+// SPIFFS flash filing system and SPI library (part of the ESP Core)
 #include <SPIFFS.h>
-
-// JPEG decoder library
-#include <JPEGDecoder.h>
-
-// SPI library, built into IDE
 #include <SPI.h>
 
-// Call up the TFT library
-#include <TFT_eSPI.h> // Hardware-specific library for ESP8266
-// The TFT control pins are set in the User_Setup.h file <<<<<<<<<<<<<<<<< NOTE!
-// that can be found in the "src" folder of the library
+// JPEG decoder library from https://github.com/Bodmer/JPEGDecoder
+#include <JPEGDecoder.h>
 
-// Invoke TFT library
+// TFT library from https://github.com/Bodmer/TFT_eSPI
+// Faster and better for bitmap transfer than the Adafruit library
+// The TFT control pins are set in the User_Setup.h file that can be found in the
+// "src" folder of the library
+#include <TFT_eSPI.h>
 TFT_eSPI tft = TFT_eSPI();
 
-//====================================================================================
-//                                    Setup
-//====================================================================================
 void setup()
 {
   uint16_t i;
-  char jpegFile[20];
-  uint32_t startTime;
+  char jpegFilename[20];
+  uint32_t startTime, frameTime;
+  uint32_t statMin, statMax, statSum;
 
-  Serial.begin(115200); // Used for messages
-
+  #ifdef DEBUG
+  Serial.begin(115200); // Used for debugging messages
   delay(10);
   Serial.println("Application starting");
+  #endif
 
   tft.begin();
   tft.setRotation(0); // 0 & 2 Portrait. 1 & 3 landscape
@@ -69,28 +96,59 @@ void setup()
 
   if (!SPIFFS.begin())
   {
+    #ifdef DEBUG
     Serial.println("SPIFFS initialisation failed!");
+    #endif
     while (1)
       yield(); // Stay here twiddling thumbs waiting
   }
+  #ifdef DEBUG
   Serial.println("\r\nInitialisation done.");
   Serial.print("SPIFFS Total Bytes: "); Serial.println(SPIFFS.totalBytes());
   Serial.print("SPIFFS Used Bytes: ");  Serial.println(SPIFFS.usedBytes());
+  #endif
 
   // Note the / before the SPIFFS file name must be present, this means the file is in
-  // the root directory of the SPIFFS, e.g. "/Tiger.jpg" for a file called "Tiger.jpg"
-
+  // the root directory of the SPIFFS
+  // The first file is named video001.jpeg. The last file may be up to video999.jpeg
+  // The for loop will break and restart at video001.jpeg as soon as a file is not
+  // found or cannot be opened
   drawJpeg("/back.jpeg", 0, 0);
   while (1)
+  {
+    #ifdef DEBUG
+    statMin = 999999;
+    statMax = 0;
+    statSum = 0;
+    #endif
+
     for (i = 1; i < 1000; i++)
     {
-      sprintf(jpegFile, "/video%03d.jpeg", i);
+      sprintf(jpegFilename, "/video%03d.jpeg", i);
+    
+      #ifdef DEBUG
       startTime = millis();
-      if (!drawJpeg(jpegFile, 0, 0))
+      #endif
+    
+      if (!drawJpeg(jpegFilename, 0, 0))
         break;  // exit for loop
-      // Serial.println(millis() - startTime);
-      while (millis() - startTime < 100);
+    
+      #ifdef DEBUG
+      frameTime = millis() - startTime;
+      statMin = minimum(statMin, frameTime);
+      statMax = maximum(statMax, frameTime);
+      statSum += frameTime;
+      #endif
+    
+      while (millis() - startTime < FRAME_PERIOD);
     }
+  #ifdef DEBUG
+  Serial.println("Decoding Statistics ------");
+  Serial.print("Minimum time: "); Serial.print(statMin); Serial.println("ms");
+  Serial.print("Maximum time: "); Serial.print(statMax); Serial.println("ms");
+  Serial.print("Average time: "); Serial.print(statSum/i); Serial.println("ms");
+  #endif
+  }
 }
 
 void loop()
