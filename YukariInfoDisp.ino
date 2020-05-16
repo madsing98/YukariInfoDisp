@@ -82,11 +82,12 @@ void setup()
 
   drawJpeg("/back.jpeg", 0, 0);
   while (1)
-    for (i = 1; i < 607; i++)
+    for (i = 1; i < 1000; i++)
     {
       sprintf(jpegFile, "/video%03d.jpeg", i);
       startTime = millis();
-      drawJpeg(jpegFile, 0, 0);
+      if (!drawJpeg(jpegFile, 0, 0))
+        break;  // exit for loop
       // Serial.println(millis() - startTime);
       while (millis() - startTime < 100);
     }

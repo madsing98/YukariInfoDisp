@@ -10,35 +10,29 @@
 //====================================================================================
 //   Opens the image file and prime the Jpeg decoder
 //====================================================================================
-void drawJpeg(const char *filename, int xpos, int ypos)
+bool drawJpeg(const char *filename, int xpos, int ypos)
 {
   // Open the named file (the Jpeg decoder library will close it after rendering image)
   File jpegFile = SPIFFS.open(filename, "r"); // File handle reference for SPIFFS
   if (!jpegFile)
-  {
-    Serial.print("ERROR: File \"");
-    Serial.print(filename);
-    Serial.println("\" not found!");
-    return;
-  }
+    return false;
 
   // Use one of the three following methods to initialise the decoder:
   boolean decoded = JpegDec.decodeFsFile(jpegFile); // Pass a SPIFFS file handle to the decoder,
   //boolean decoded = JpegDec.decodeSdFile(jpegFile); // or pass the SD file handle to the decoder,
   //boolean decoded = JpegDec.decodeFsFile(filename);  // or pass the filename (leading / distinguishes SPIFFS files)
   // Note: the filename can be a String or character array type
-  if (decoded)
-  {
-    // print information about the image to the serial port
-    //jpegInfo();
-
-    // render the image onto the screen at given coordinates
-    jpegRender(xpos, ypos);
-  }
-  else
+  if (!decoded)
   {
     Serial.println("Jpeg file format not supported!");
+    return false;
   }
+  // print information about the image to the serial port
+  //jpegInfo();
+
+  // render the image onto the screen at given coordinates
+  jpegRender(xpos, ypos);
+  return true;
 }
 
 //====================================================================================
