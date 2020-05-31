@@ -77,8 +77,8 @@
 
 // TFT library from https://github.com/Bodmer/TFT_eSPI
 // Faster and better for bitmap transfer than the Adafruit library
-// The TFT control pins are set in the User_Setup.h file that can be found in the
-// "src" folder of the library
+// The TFT control pins are set in the User_Setup.h file that can be found in the "src"
+// folder of the library (/Users/XXX/Documents/Arduino/libraries/TFT_eSPI/User_Setup.h)
 #include <TFT_eSPI.h>
 TFT_eSPI tft = TFT_eSPI();
 
@@ -151,7 +151,7 @@ void setup()
 
       sprintf(jpegFilename, "/video%03d.jpeg", i);
       if (!drawJpeg(jpegFilename, 0, 0, FRAME_PERIOD))
-        break;  // exit 'for' loop
+        break;  // File does not exist, exit 'for' loop
     
       #ifdef DEBUG
       frameTime = millis() - startTime;

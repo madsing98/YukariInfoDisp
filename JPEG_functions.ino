@@ -9,11 +9,14 @@
 //   Opens the image file and calls the Jpeg decoder
 //   !!!! SPIFFS.open() always returns a File, even if the file is not found. This
 //   !!!! function cannot be used to test if a file exists.
+//   !!!! SPIFFS.exists() is used to check if the file exists.
 //====================================================================================
 bool drawJpeg(const char *filename, int xpos, int ypos, uint32_t framePeriod)
 {
   uint32_t startTime;
+  // We assume that the rendering time is 10ms
   const uint32_t renderTime = 10;
+  
   if (framePeriod < renderTime)
     framePeriod = renderTime;
   startTime = millis();
@@ -41,7 +44,6 @@ bool drawJpeg(const char *filename, int xpos, int ypos, uint32_t framePeriod)
 
   // Wait for the right time to display the resulting image
   // This may be zero if the decoding time was too long
-  // Here we assume that the rendering time is 10ms
   while ((millis() - startTime) < (framePeriod - renderTime));
   
   // Render the image onto the screen at given coordinates
