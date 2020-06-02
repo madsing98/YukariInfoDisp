@@ -79,6 +79,15 @@
 // Faster and better for bitmap transfer than the Adafruit library
 // The TFT control pins are set in the User_Setup.h file that can be found in the "src"
 // folder of the library (/Users/XXX/Documents/Arduino/libraries/TFT_eSPI/User_Setup.h)
+// Current settings for Yukari Tourist Information display are:
+// #define ST7735_DRIVER
+// #define TFT_WIDTH  80
+// #define TFT_HEIGHT 160
+// #define ST7735_GREENTAB160x80 // For 160 x 80 display (BGR, inverted, 26 offset)
+// #define TFT_CS    5  // Chip select control pin
+// #define TFT_DC    2  // Data Command control pin
+// #define TFT_RST   4  // Reset pin (could connect to RST pin)
+// #define SPI_FREQUENCY  27000000 // Actually sets it to 26.67MHz = 80/3
 #include <TFT_eSPI.h>
 TFT_eSPI tft = TFT_eSPI();
 
