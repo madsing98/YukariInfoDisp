@@ -59,6 +59,9 @@
   - Extract the .jpeg files with ffmpeg:
     ./ffmpeg -i video.mp4 -s 40x80 -r 10 video%03d.jpeg
 
+  The average refresh rate is about 10fps for 40x80 images:
+  - The file read + JPEG decoding time varies between 15 and 150ms!
+  - The rendering time (image transfer to the display using the SPI bus) is about 10ms
   ==================================================================================*/
 
 // Return the minimum and maximum of two values a and b
